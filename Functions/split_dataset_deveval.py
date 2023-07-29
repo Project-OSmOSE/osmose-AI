@@ -21,21 +21,13 @@ import numpy as np
 import os
 import pandas as pd
 import random
-import sys
 from tqdm import tqdm
 
 
 
 
 #%% MAIN
-def SplitDataset_DevEval_main(Task_ID, BM_Name, SplitName, RatioDev, SelectionMethod, parameters):
-    
-    #Load Paths
-    with open('path_osmose.txt') as f:
-        path_osmose = f.readlines()[0]
-    
-    path_osmose_analysisAI = path_osmose + 'analysis' + os.sep + 'AI'
-    path_osmose_dataset = path_osmose + 'dataset'
+def SplitDataset_DevEval_main(path_osmose_dataset, path_osmose_analysisAI, Task_ID, BM_Name, SplitName, RatioDev, SelectionMethod, parameters):
     
     metadata = np.load(path_osmose_analysisAI + os.sep + Task_ID + os.sep + BM_Name + os.sep + 'info_datasplit' + os.sep +  'Fdataset_metadata.npz')
     train_df = pd.read_csv(path_osmose_analysisAI + os.sep + Task_ID + os.sep + BM_Name + os.sep + 'info_datasplit' + os.sep + 'ALLannotations.csv')
@@ -53,9 +45,29 @@ def SplitDataset_DevEval_main(Task_ID, BM_Name, SplitName, RatioDev, SelectionMe
     #%% Split Method 
         # For now, only 'FullyRandom' : all files are mixed and then we split according to RatioDev
     
-    if  SelectionMethod == 'Continue':
+    if  SelectionMethod == 'SelDatasets':
         ord_sequence = list(np.linspace(0,NbFile-1, NbFile, dtype=int))
+        dataset_for_dev = parameters['dataset_for_dev']
+        dataset_for_eval = parameters['dataset_for_eval']
+        shuffle = parameters['shuffle']
+        DevSetArg = []
+        EvalSetArg = []
+        for i in ord_sequence:
+            if train_df['dataset'][i] in dataset_for_dev:
+                    DevSetArg.append(i)
+            if train_df['dataset'][i] in dataset_for_eval:
+                    EvalSetArg.append(i)
+                    
+        if shuffle == True:
+            random.shuffle(DevSetArg)
+            random.shuffle(EvalSetArg)
+        if shuffle == False:
+            EvalSetArg = sorted(EvalSetArg)
+            DevSetArg = sorted(DevSetArg)
         
+    if  SelectionMethod == 'Continue':
+        
+        ord_sequence = list(np.linspace(0,NbFile-1, NbFile, dtype=int))
         DevSetArg = (ord_sequence[:int(RatioDev*NbFile)])
         EvalSetArg = (ord_sequence[int(RatioDev*NbFile):])
     
@@ -68,6 +80,7 @@ def SplitDataset_DevEval_main(Task_ID, BM_Name, SplitName, RatioDev, SelectionMe
         
     if  SelectionMethod == 'RandomBySeq':
         NbFileInSequence = parameters['NbFileInSequence']
+        shuffle = parameters['shuffle']
         NbSequence = round(NbFile/NbFileInSequence)
         
         ord_sequence = list(np.linspace(0,NbFile-1, NbFile, dtype=int))
@@ -85,8 +98,9 @@ def SplitDataset_DevEval_main(Task_ID, BM_Name, SplitName, RatioDev, SelectionMe
             if file_id not in DevSetArg:
                 EvalSetArg.append(file_id)
     
-        EvalSetArg = sorted(EvalSetArg)
-        DevSetArg = sorted(DevSetArg)
+        if shuffle == False:
+            EvalSetArg = sorted(EvalSetArg)
+            DevSetArg = sorted(DevSetArg)
         
     if SelectionMethod == 'SelPositiveRatio':
         PositiveRatio = parameters['PositiveRatio']

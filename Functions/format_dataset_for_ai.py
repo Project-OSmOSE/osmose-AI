@@ -29,13 +29,9 @@ from tqdm import tqdm
 
 #%% MAIN
 
-def MergeTimestampWithAnnotation(LenghtFile, sample_rate, dataset_ID, file_annotation, LabelsList, AnnotatorsList, Crop_duration = 3, is_box = None, LabelType = "classic"):
+def MergeTimestampWithAnnotation(path_osmose_dataset, LenghtFile, sample_rate, dataset_ID, file_annotation, LabelsList, AnnotatorsList, Crop_duration = 3, is_box = None, LabelType = "classic"):
     print('Processing dataset : ' + dataset_ID)
-    #Load Paths
-    with open('path_osmose.txt') as f:
-        path_osmose = f.readlines()[0]
-    
-    path_osmose_dataset = path_osmose + 'dataset' 
+        
     folderName_audioFiles = str(LenghtFile)+'_'+str(int(sample_rate))
     
     #List All WavFile From Dataset
@@ -117,19 +113,6 @@ def MergeTimestampWithAnnotation(LenghtFile, sample_rate, dataset_ID, file_annot
                 list_wavfile_to_be_kept.append(file)
                 continue
         
-        '''
-        list_wavfile_to_be_kept = []
-        for file in tqdm(list_wavfile):
-            flag = False
-            for i_status in range(len(xl_task_status)):
-                for annot in AnnotatorsList:
-                    if xl_task_status['filename'][i_status][:-4] in file:
-                        if xl_task_status[annot][i_status] == 'FINISHED':
-                            list_wavfile_to_be_kept.append(file) 
-                            flag = True
-                            break
-                    if flag == True: break
-         ''' 
         list_wavfile = list_wavfile_to_be_kept
         
     else: print('Warning : No task_status.csv file')
@@ -228,7 +211,7 @@ def MergeTimestampWithAnnotation(LenghtFile, sample_rate, dataset_ID, file_annot
                 AnnotationPerFile[I1 >= 2] = 1
                 AnnotationPerFile[I2 >= 2] = 1
                 AnnotationPerFile[I3 >= 2] = 1
-            elif LabelType == 'weak_labels':
+            elif LabelType == 'soft_labels':
                 AnnotationPerFile_i = np.zeros_like(AnnotationPerFile)
                 AnnotationPerFile_i[I1 >= 2] = 1
                 AnnotationPerFile_i[I2 >= 2] = 1
@@ -236,7 +219,7 @@ def MergeTimestampWithAnnotation(LenghtFile, sample_rate, dataset_ID, file_annot
                 AnnotationPerFile += AnnotationPerFile_i
             else : print('!! ERROR : LabelType Unknown !!')
         # Save In Tab For The Label 
-        if LabelType == 'weak_labels':
+        if LabelType == 'soft_labels':
             print(AnnotationPerFile)
             AnnotationPerFile = AnnotationPerFile/len(AnnotatorsList)
             AnnotationPerFile[AnnotationPerFile>1] = 1
@@ -270,10 +253,11 @@ def MergeTimestampWithAnnotation(LenghtFile, sample_rate, dataset_ID, file_annot
         print(label_fin,' -> ratio of positive : ', "{:10.3f}".format(x),'%')
     
     print('   ')
+    print('____________________')
     return format_dataset_df
 
 
-def FormatDatasets_main(Task_ID, BM_Name, LenghtFile_tab, sample_rate_tab, dataset_ID_tab, file_annotation_tab, orig_LabelsList_tab, FinalLabel_Dic, AnnotatorsList_tab, Crop_duration, is_box=None, LabelType = "classic"):
+def FormatDatasets_main(path_osmose_dataset, path_osmose_analysisAI, Task_ID, BM_Name, LenghtFile_tab, sample_rate_tab, dataset_ID_tab, file_annotation_tab, orig_LabelsList_tab, FinalLabel_Dic, AnnotatorsList_tab, Crop_duration, is_box=None, LabelType = "classic"):
     
     '''
         INPUTS :
@@ -287,12 +271,6 @@ def FormatDatasets_main(Task_ID, BM_Name, LenghtFile_tab, sample_rate_tab, datas
             - Crop_duration : time to crop at the start and end of the Aplose's annotations
            
     '''
-    #Load Paths
-    with open('path_osmose.txt') as f:
-        path_osmose = f.readlines()[0]
-    
-    path_osmose_analysisAI = path_osmose + 'analysis' + os.sep + 'AI'
-    path_osmose_dataset = path_osmose + 'dataset' 
 
     #Create Paths
     if not os.path.exists(path_osmose_analysisAI + os.sep + Task_ID):
@@ -317,7 +295,7 @@ def FormatDatasets_main(Task_ID, BM_Name, LenghtFile_tab, sample_rate_tab, datas
         AnnotatorsList = AnnotatorsList_tab[i]
         
         folderName_audioFiles = str(LenghtFile)+'_'+str(int(sample_rate))
-        format_dataset_df = MergeTimestampWithAnnotation(LenghtFile, sample_rate, dataset_ID, file_annotation, LabelsList, AnnotatorsList, Crop_duration, is_box)
+        format_dataset_df = MergeTimestampWithAnnotation(path_osmose_dataset, LenghtFile, sample_rate, dataset_ID, file_annotation, LabelsList, AnnotatorsList, Crop_duration, is_box)
 
         Dic_all_DF[dataset_ID] = format_dataset_df 
     
