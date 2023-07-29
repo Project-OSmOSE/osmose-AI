@@ -6,7 +6,6 @@ Created on Tue Jun 20 18:00:06 2023
 """
 
 import os
-import glob
 import numpy as np
 import pandas as pd
 import torch
@@ -16,36 +15,32 @@ import matplotlib.pyplot as plt
 
 from set_network_functions import transform_simple, transform_ref
 from class_dataset import ClassDataset
-from evaluation_metrics import ComputeEvaluationMetrics, plot_PR_curve, plot_ROC_curve, plot_DET_curve, plot_COST_curve, plot_4_curves
+#from evaluation_metrics import ComputeEvaluationMetrics, plot_PR_curve, plot_ROC_curve, plot_DET_curve, plot_COST_curve, plot_4_curves
 
-def apply_model_on_new_format_dataset_main(Task_ID_Model, BM_Name_Model, Version_name_Model, parameters_Model, Task_ID_Evaluation, BM_Name_Evaluation, SplitName_Evaluation, parameters_Evaluation):
+def apply_model_on_new_format_dataset_main(path_osmose_dataset, path_osmose_analysisAI, Task_ID_Model, BM_Name_Model, model_name_Model, parameters_Model, Task_ID_Evaluation, BM_Name_Evaluation, SplitName_Evaluation, parameters_Evaluation):
     
     #%% DEVICE 
     device = ("cuda" if torch.cuda.is_available() else "cpu")
     #device = 'cpu'
     
     #%% Dataset Path
-    with open('path_osmose.txt') as f:
-        path_osmose = f.readlines()[0]
-        
-    path_osmose_analysisAI = path_osmose + 'analysis' + os.sep + 'AI'
-    path_osmose_dataset = path_osmose + 'dataset'
-       
-    path_model = path_osmose + 'analysis' + os.sep + 'AI' + os.sep + Task_ID_Model + os.sep + BM_Name_Model + os.sep + 'models'
+    path_model = path_osmose_analysisAI + os.sep + Task_ID_Model + os.sep + BM_Name_Model + os.sep + 'models'
 
     
     
     #%% Load Model 
-    ModelName = parameters_Model['ModelName']
-
-    model = torch.jit.load(path_model + os.sep + Version_name_Model + os.sep + 'model_state' + os.sep + Version_name_Model + '_Scripted_model.pt')
+    if 'architecture' in list(parameters_Model.keys()):
+        architecture = parameters_Model['architecture']
+    else: architecture = parameters_Model['ModelName']
+    
+    model = torch.jit.load(path_model + os.sep + model_name_Model + os.sep + 'model_state' + os.sep + model_name_Model + '_Scripted_model.pt')
     model.eval()
         
     # Initialize the model for this run
     ref_model_list = ['resnet18', 'resnet50', 'resnet101', 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg19', 'vgg19_bn', 'alexnet']
-    if ModelName in ref_model_list:
+    if architecture in ref_model_list:
         trans = transform_ref
-    elif ModelName in ['CNN3_FC3','CNN4_FC3', 'CNN3_FC1'] :
+    elif architecture in ['CNN3_FC3','CNN4_FC3', 'CNN3_FC1'] :
         trans = transform_simple
     else: print('ERROR : Model not in list ...')
     #%% Load Format Dataset
@@ -100,11 +95,13 @@ def apply_model_on_new_format_dataset_main(Task_ID_Model, BM_Name_Model, Version
     labels = np.zeros([len(dataset), len(LabelsList)])
     outputs = np.zeros([len(dataset), len(LabelsList)])
     filename = [0 for _ in range(len(dataset))]
-    
+    datasets = [[] for i in range(len(dataset))]
+
     for i in tqdm(range(len(dataset))):
         
         #get filename
         filename[i] = dataset.__getfilename__(i)
+        datasets[i] = dataset.__getdataset__(i)
         
         #get data and label
         imgs, label = dataset.__getitem__(i)
@@ -119,40 +116,36 @@ def apply_model_on_new_format_dataset_main(Task_ID_Model, BM_Name_Model, Version
         outputs[i] = outputs_batch.cpu().detach().numpy()
     
     
-    return LabelsList, labels, outputs, filename
+    return LabelsList, labels, outputs, dataset, filename
     
     
     
     
 
-def plot_some_example(Task_ID_Model, BM_Name_Model, Version_name_Model, parameters_Model, Task_ID_Evaluation, BM_Name_Evaluation, SplitName_Evaluation, parameters_Evaluation):
+def plot_some_example(path_osmose_dataset, path_osmose_analysisAI, Task_ID_Model, BM_Name_Model, model_name_Model, parameters_Model, Task_ID_Evaluation, BM_Name_Evaluation, SplitName_Evaluation, parameters_Evaluation):
     
     #%% DEVICE 
     device = ("cuda" if torch.cuda.is_available() else "cpu")
     #device = 'cpu'
     
     #%% Dataset Path
-    with open('path_osmose.txt') as f:
-        path_osmose = f.readlines()[0]
-        
-    path_osmose_analysisAI = path_osmose + 'analysis' + os.sep + 'AI'
-    path_osmose_dataset = path_osmose + 'dataset'
-       
-    path_model = path_osmose + 'analysis' + os.sep + 'AI' + os.sep + Task_ID_Model + os.sep + BM_Name_Model + os.sep + 'models'
-
-    
+    path_model = path_osmose_analysisAI + os.sep + Task_ID_Model + os.sep + BM_Name_Model + os.sep + 'models'
     
     #%% Load Model 
-    ModelName = parameters_Model['ModelName']
+    print('Loading trained model ...')
 
-    model = torch.jit.load(path_model + os.sep + Version_name_Model + os.sep + 'model_state' + os.sep + Version_name_Model + '_Scripted_model.pt')
+    if 'architecture' in list(parameters_Model.keys()):
+        architecture = parameters_Model['architecture']
+    else: architecture = parameters_Model['ModelName']
+
+    model = torch.jit.load(path_model + os.sep + model_name_Model + os.sep + 'model_state' + os.sep + model_name_Model + '_Scripted_model.pt')
     model.eval()
         
     # Initialize the model for this run
     ref_model_list = ['resnet18', 'resnet50', 'resnet101', 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg19', 'vgg19_bn', 'alexnet']
-    if ModelName in ref_model_list:
+    if architecture in ref_model_list:
         trans = transform_ref
-    elif ModelName in ['CNN3_FC3', 'CNN3_FC1', 'CNN4_FC3'] :
+    elif architecture in ['CNN3_FC3', 'CNN3_FC1', 'CNN4_FC3'] :
         trans = transform_simple
         
     else: print('ERROR : Model not in list ...')
